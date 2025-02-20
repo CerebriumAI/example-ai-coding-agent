@@ -4,6 +4,7 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { CodeProvider } from "@/contexts/code-context"
+import { Analytics } from "@vercel/analytics/react"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -23,6 +24,7 @@ export default function RootLayout({
         <CodeProvider>
             <SidebarProvider>{children}</SidebarProvider>
         </CodeProvider>
+        <Analytics />
         </body>
         </html>
     )
