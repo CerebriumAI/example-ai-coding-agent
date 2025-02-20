@@ -39,11 +39,11 @@ const Page = () => {
     }, [])
 
     useEffect(() => {
-        localStorage.setItem("conversations", JSON.stringify(conversations.map(({ socket, ...conv }) => conv)))
+        localStorage.setItem("conversations", JSON.stringify(conversations.map(({ ...conv }) => conv)))
     }, [conversations])
 
     const createWebSocket = (conversationId: string) => {
-        const ws = new WebSocket(process.env.NEXT_PUBLIC_CEREBRIUM_SOCKET_URL)
+        const ws = new WebSocket(process.env.NEXT_PUBLIC_CEREBRIUM_SOCKET_URL || '')
 
         ws.onopen = () => {
             console.log(`WebSocket connected for conversation ${conversationId}`)
@@ -145,30 +145,6 @@ const Page = () => {
             setIsLoading(false)
             setStatus(null)
         }
-    }
-
-    const addMessageToConversation = (conversationId: string, message: Message) => {
-        setConversations((prevConversations) => {
-            return prevConversations.map((conv) => {
-                if (conv.id === conversationId) {
-                    const lastMessage = conv.messages[conv.messages.length - 1]
-                    if (lastMessage && lastMessage.role === "assistant" && !lastMessage.type && !message.type) {
-                        const updatedMessages = [...conv.messages]
-                        updatedMessages[updatedMessages.length - 1] = {
-                            ...lastMessage,
-                            content: lastMessage.content + message.content,
-                        }
-                        return { ...conv, messages: updatedMessages }
-                    } else {
-                        return {
-                            ...conv,
-                            messages: [...conv.messages, message],
-                        }
-                    }
-                }
-                return conv
-            })
-        })
     }
 
     const sendMessage = (message: string) => {

@@ -94,10 +94,10 @@ export function CodeSidebar() {
                     </div>
 
                     {/* Code View */}
-                    {activeFile && (
+                    {activeFile && activeFileId && (
                         <div className="flex flex-grow flex-col overflow-hidden">
                             <div className="px-4 py-2 text-sm text-muted-foreground border-b">{activeFile.file_path}</div>
-                            <ScrollArea className="flex-1" orientation="both">
+                            <ScrollArea className="flex-1">
                                 {isGenerating ? (
                                     <div className="p-4 space-y-3">
                                         <div className="h-4 w-3/4 bg-muted animate-pulse rounded" />
