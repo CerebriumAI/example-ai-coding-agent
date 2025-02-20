@@ -10,7 +10,7 @@ const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
     title: "AI Coding Agent | Cerebrium",
-    description: "AI-powered chat application",
+    description: "AI-powered Coding Agent",
 }
 
 export default function RootLayout({
