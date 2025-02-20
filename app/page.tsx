@@ -43,7 +43,7 @@ export default function Home() {
   }, [conversations])
 
   const createWebSocket = (conversationId: string) => {
-    const ws = new WebSocket("wss://dev-api.cortex.cerebrium.ai/v4/dev-p-b745d052/coding-agent/ws")
+    const ws = new WebSocket(process.env.CEREBRIUM_SOCKET_URL)
 
     ws.onopen = () => {
       console.log(`WebSocket connected for conversation ${conversationId}`)
