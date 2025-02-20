@@ -39,7 +39,7 @@ export function Header({
                             />
                         </SheetContent>
                     </Sheet>
-                    <h1 className="text-2xl font-bold">AI Chat</h1>
+                    <h1 className="text-2xl font-bold">AI Coding Agent</h1>
                 </div>
                 <div className="flex items-center">
                     {isConnected ? <Wifi className="text-green-400" /> : <WifiOff className="text-red-400" />}

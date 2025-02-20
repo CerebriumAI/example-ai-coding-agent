@@ -1,273 +1,87 @@
-"use client"
+import {ArrowRight, Github, Newspaper} from "lucide-react"
+import Image from "next/image"
+import Link from "next/link"
 
-import { useState, useEffect } from "react"
-import { Chat } from "@/components/chat"
-import { Header } from "@/components/header"
-import { AppSidebar } from "@/components/app-sidebar"
-import { CodeSidebar } from "@/components/code-sidebar"
-import { useCode } from "@/contexts/code-context"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
 
-interface Message {
-  id: string
-  role: string
-  content: string
-  type?: string
-  fragmentId?: string
-}
-
-interface Conversation {
-  id: string
-  messages: Message[]
-  socket: WebSocket | null
-}
-
-export default function Home() {
-  const [conversations, setConversations] = useState<Conversation[]>([])
-  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [status, setStatus] = useState<string | null>(null)
-  const { setFragments, updateCode, isCodeOpen } = useCode()
-
-  useEffect(() => {
-    const savedConversations = localStorage.getItem("conversations")
-    if (savedConversations) {
-      const parsedConversations = JSON.parse(savedConversations)
-      setConversations(parsedConversations.map((conv: Conversation) => ({ ...conv, socket: null })))
-    }
-  }, [])
-
-  useEffect(() => {
-    localStorage.setItem("conversations", JSON.stringify(conversations.map(({ socket, ...conv }) => conv)))
-  }, [conversations])
-
-  const createWebSocket = (conversationId: string) => {
-    const ws = new WebSocket(process.env.CEREBRIUM_SOCKET_URL)
-
-    ws.onopen = () => {
-      console.log(`WebSocket connected for conversation ${conversationId}`)
-    }
-
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data)
-      handleIncomingMessage(conversationId, data)
-    }
-
-    ws.onclose = () => {
-      console.log(`WebSocket closed for conversation ${conversationId}`)
-      setConversations((prev) => prev.map((conv) => (conv.id === conversationId ? { ...conv, socket: null } : conv)))
-    }
-
-    ws.onerror = (error) => {
-      console.error(`WebSocket error for conversation ${conversationId}:`, error)
-    }
-
-    return ws
-  }
-
-  const handleIncomingMessage = (conversationId: string, data: any) => {
-    if (data.type === "fragment_structure") {
-      setFragments(data.content)
-      if (data.content.length === 1) {
-        const firstFragment = data.content[0]
-        updateCode(firstFragment.id, "")
-      }
-    } else if (data.type === "status") {
-      console.log(data);
-      setStatus(data.content)
-    } else if (data.type.startsWith("context_") || data.type.startsWith("code_") || data.type === "token") {
-      setConversations((prevConversations) => {
-        return prevConversations.map((conv) => {
-          if (conv.id !== conversationId) return conv
-
-          const messages = [...conv.messages]
-          const messageType = data.type.startsWith("code_")
-              ? "code"
-              : data.type.startsWith("context_")
-                  ? "context"
-                  : undefined
-          const fragmentId =
-              data.type.startsWith("code_") || data.type.startsWith("context_") ? data.type.split("_")[1] : undefined
-
-          const existingMessageIndex = messages.findIndex((m) => m.type === messageType && m.fragmentId === fragmentId)
-
-          if (existingMessageIndex !== -1) {
-            messages[existingMessageIndex] = {
-              ...messages[existingMessageIndex],
-              content:
-                  messageType === "context"
-                      ? data.content
-                      : messages[existingMessageIndex].content + data.content,
-            }
-          } else {
-            messages.push({
-              id: `${Date.now()}-${Math.random()}`,
-              role: "assistant",
-              content: data.content,
-              type: messageType,
-              fragmentId,
-            })
-          }
-
-          return { ...conv, messages }
-        })
-      })
-
-      if (data.type.startsWith("code_")) {
-        const fragmentId = data.type.replace("code_", "")
-        updateCode(fragmentId, data.content)
-      }
-    } else if (data.type === "preview_url") {
-      const previewMessage = {
-        id: `${Date.now()}-${Math.random()}`,
-        role: "assistant",
-        content: `Your code has been deployed! You can view the preview here: [Preview](https://${data.content})`,
-        type: "preview"
-      }
-
-      setConversations((prevConversations) => {
-        return prevConversations.map((conv) => {
-          if (conv.id === conversationId) {
-            return {
-              ...conv,
-              messages: [...conv.messages, previewMessage]
-            }
-          }
-          return conv
-        })
-      })
-      setIsLoading(false)
-      setStatus(null)
-    }
-
-    if (data.type === "done") {
-      setIsLoading(false)
-      setStatus(null)
-    }
-  }
-
-  const addMessageToConversation = (conversationId: string, message: Message) => {
-    setConversations((prevConversations) => {
-      return prevConversations.map((conv) => {
-        if (conv.id === conversationId) {
-          const lastMessage = conv.messages[conv.messages.length - 1]
-          if (lastMessage && lastMessage.role === "assistant" && !lastMessage.type && !message.type) {
-            const updatedMessages = [...conv.messages]
-            updatedMessages[updatedMessages.length - 1] = {
-              ...lastMessage,
-              content: lastMessage.content + message.content,
-            }
-            return { ...conv, messages: updatedMessages }
-          } else {
-            return {
-              ...conv,
-              messages: [...conv.messages, message],
-            }
-          }
-        }
-        return conv
-      })
-    })
-  }
-
-  const sendMessage = (message: string) => {
-    if (!currentConversationId) return
-
-    setIsLoading(true)
-    setStatus("Processing...")
-
-    const currentConversation = conversations.find((conv) => conv.id === currentConversationId)
-    if (!currentConversation) return
-
-    const userMessage = {
-      id: `${Date.now()}-${Math.random()}`,
-      role: "user",
-      content: message,
-    }
-
-    setConversations((prev) =>
-        prev.map((conv) =>
-            conv.id === currentConversationId ? { ...conv, messages: [...conv.messages, userMessage] } : conv,
-        ),
-    )
-
-    if (!currentConversation.socket || currentConversation.socket.readyState !== WebSocket.OPEN) {
-      const newSocket = createWebSocket(currentConversationId)
-      setConversations((prev) =>
-          prev.map((conv) => (conv.id === currentConversationId ? { ...conv, socket: newSocket } : conv)),
-      )
-      newSocket.onopen = () => {
-        newSocket.send(
-            JSON.stringify({
-              prompt: message,
-              history: currentConversation.messages,
-            }),
-        )
-      }
-    } else {
-      currentConversation.socket.send(
-          JSON.stringify({
-            prompt: message,
-            history: currentConversation.messages,
-          }),
-      )
-    }
-  }
-
-  const createNewConversation = () => {
-    const newId = Date.now().toString()
-    setConversations((prev) => [...prev, { id: newId, messages: [], socket: null }])
-    setCurrentConversationId(newId)
-  }
-
-  const currentConversation = conversations.find((conv) => conv.id === currentConversationId)
-
+export default function Page() {
   return (
-      <div className="flex h-screen w-screen">
-        <AppSidebar
-            conversations={conversations}
-            currentConversationId={currentConversationId}
-            onSelectConversation={setCurrentConversationId}
-            onNewConversation={createNewConversation}
-        />
-        <div className="flex flex-col w-full justify-between">
-          <Header
-              isConnected={!!currentConversation?.socket}
-              conversations={conversations}
-              currentConversationId={currentConversationId}
-              onSelectConversation={setCurrentConversationId}
-              onNewConversation={createNewConversation}
-          />
-          <div className="flex-grow w-full h-full overflow-hidden">
-            <div className="w-full h-full grid grid-cols-2">
-              <main
-                  className={cn(
-                      "h-full w-full transition-all overflow-scroll flex flex-col duration-200 ease-in-out",
-                      isCodeOpen ? "col-span-1" : "col-span-2"
-                  )}
-              >
-                {currentConversation ? (
-                    <Chat
-                        messages={currentConversation.messages}
-                        onSendMessage={sendMessage}
-                        isLoading={isLoading}
-                        status={status}
-                    />
-                ) : (
-                    <div className="flex items-center justify-center h-full">
-                      <Button onClick={createNewConversation}>Start a new conversation</Button>
-                    </div>
-                )}
-              </main>
-              {isCodeOpen && (
-                  <div className="h-full border-l col-span-1 overflow-hidden">
-                    <CodeSidebar/>
-                  </div>
-              )}
+      <div className="min-h-screen w-screen flex flex-col">
+        <section className="bg-primary text-primary-foreground py-24 text-center px-4">
+          <h1 className="text-4xl md:text-6xl font-bold mb-6">AI Coding Agent</h1>
+          <p className="text-lg md:text-xl mb-8 max-w-2xl mx-auto">
+            Experience real-time code generation with AI-powered assistance. Write, preview, and deploy code instantly
+            through natural language.
+          </p>
+          <Button asChild size="lg" variant="secondary" className="rounded-full">
+            <Link href="/demo">
+              Start Coding <ArrowRight className="ml-2 h-5 w-5" />
+            </Link>
+          </Button>
+        </section>
+
+        <section className="py-16 px-4">
+          <div className="max-w-screen-lg mx-auto">
+            <div className="flex justify-center items-center">
+              <div className="justify-center items-center gap-12 mb-16 rounded-full shadow-xl inline-flex px-10">
+                <div className="flex items-center gap-2 text-lg font-medium">
+                    <Link href="https://www.cerebrium.ai">
+                      <Image
+                          src="/cerebrium-logo.svg"
+                          alt="Cerebrium"
+                          width={200}
+                          height={60}
+                          className="rounded-lg"
+                      />
+                    </Link>
+                </div>
+                <div className="flex items-center gap-2 text-lg font-medium">
+                  <Link href="https://e2b.dev">
+                  <Image
+                      src="/e2b-logo.svg"
+                      alt="E2B"
+                      width={70}
+                      height={60}
+                      className="rounded-lg"
+                  />
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            <h2 className="text-3xl font-bold text-center mb-8">Project Overview</h2>
+
+            <div className="space-y-6 text-lg max-w-3xl mx-auto">
+              <p>
+                Transform your development workflow with our AI coding assistant that combines natural language
+                understanding with real-time code generation. Simply describe what you want to build, and watch as your
+                ideas come to life with instant code previews.
+              </p>
+              <p>
+                Built with Next.js for the frontend, FastAPI for the backend, and powered by advanced AI models, this
+                system provides an intuitive interface for generating, previewing, and deploying code - all through
+                natural conversation.
+              </p>
             </div>
           </div>
-        </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="mt-auto bg-gray-950 text-gray-400 py-6 px-4">
+          <div className="max-w-screen-lg mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <p>© 2025 Cerebrium. All rights reserved.</p>
+            <div className="flex items-center gap-6">
+              <Button variant="link" className="text-current p-0" asChild>
+                <Link href="">
+                  <span className="ml-2">Source Code</span>
+                </Link>
+              </Button>
+              <Button variant="link" className="text-current p-0" asChild>
+                <Link href="/blog">Blog Post</Link>
+              </Button>
+            </div>
+          </div>
+        </footer>
       </div>
   )
 }

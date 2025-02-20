@@ -8,7 +8,7 @@ import { CodeProvider } from "@/contexts/code-context"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-    title: "AI Chat",
+    title: "AI Coding Agent | Cerebrium",
     description: "AI-powered chat application",
 }
 
