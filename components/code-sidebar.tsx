@@ -1,11 +1,11 @@
-"use client"
+'use client'
 
-import { useCode } from "@/contexts/code-context"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Button } from "@/components/ui/button"
-import { ChevronDown, File, Folder, Code2, X } from "lucide-react"
-import { cn } from "@/lib/utils"
-import CodePreview from "@/components/code-preview";
+import { useCode } from '@/contexts/code-context'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Button } from '@/components/ui/button'
+import { ChevronDown, File, Folder, Code2, X } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import CodePreview from '@/components/code-preview'
 
 interface FileTreeItem {
     id: string
@@ -14,12 +14,19 @@ interface FileTreeItem {
 }
 
 export function CodeSidebar() {
-    const { fragments, code, isCodeOpen, toggleCode, activeFileId, setActiveFileId } = useCode()
+    const {
+        fragments,
+        code,
+        isCodeOpen,
+        toggleCode,
+        activeFileId,
+        setActiveFileId,
+    } = useCode()
 
     if (!isCodeOpen) return null
 
     const getFilePathParts = (path: string) => {
-        return path.split("/").filter(Boolean)
+        return path.split('/').filter(Boolean)
     }
 
     const organizeFiles = (files: FileTreeItem[]) => {
@@ -27,7 +34,7 @@ export function CodeSidebar() {
 
         files.forEach((file) => {
             const parts = getFilePathParts(file.file_path)
-            const folder = parts.length > 1 ? parts[0] : ""
+            const folder = parts.length > 1 ? parts[0] : ''
             if (!fileTree[folder]) {
                 fileTree[folder] = []
             }
@@ -49,7 +56,12 @@ export function CodeSidebar() {
                     Code
                 </div>
                 <div className="flex-1" />
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleCode}>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={toggleCode}
+                >
                     <X className="h-4 w-4" />
                     <span className="sr-only">Close</span>
                 </Button>
@@ -61,35 +73,57 @@ export function CodeSidebar() {
                     <div className="w-80 border-r border-border">
                         <ScrollArea className="h-full">
                             <div className="p-2">
-                                {Object.entries(organizedFiles).map(([folder, files]) => (
-                                    <div key={folder || "root"} className="space-y-1">
-                                        {folder && (
-                                            <div className="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground">
-                                                <Folder className="h-4 w-4" />
-                                                <span>{folder}</span>
-                                                <ChevronDown className="h-4 w-4 ml-auto" />
+                                {Object.entries(organizedFiles).map(
+                                    ([folder, files]) => (
+                                        <div
+                                            key={folder || 'root'}
+                                            className="space-y-1"
+                                        >
+                                            {folder && (
+                                                <div className="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground">
+                                                    <Folder className="h-4 w-4" />
+                                                    <span>{folder}</span>
+                                                    <ChevronDown className="h-4 w-4 ml-auto" />
+                                                </div>
+                                            )}
+                                            <div
+                                                className={cn(
+                                                    'space-y-1',
+                                                    folder && 'ml-3'
+                                                )}
+                                            >
+                                                {files.map((file) => (
+                                                    <Button
+                                                        key={file.id}
+                                                        variant="ghost"
+                                                        className={cn(
+                                                            'w-full justify-start gap-2 px-2 py-1.5 text-sm',
+                                                            activeFileId ===
+                                                                file.id &&
+                                                                'bg-muted'
+                                                        )}
+                                                        onClick={() =>
+                                                            setActiveFileId(
+                                                                file.id
+                                                            )
+                                                        }
+                                                    >
+                                                        <File className="h-4 w-4" />
+                                                        <span className="truncate">
+                                                            {folder
+                                                                ? getFilePathParts(
+                                                                      file.file_path
+                                                                  )
+                                                                      .slice(1)
+                                                                      .join('/')
+                                                                : file.file_path}
+                                                        </span>
+                                                    </Button>
+                                                ))}
                                             </div>
-                                        )}
-                                        <div className={cn("space-y-1", folder && "ml-3")}>
-                                            {files.map((file) => (
-                                                <Button
-                                                    key={file.id}
-                                                    variant="ghost"
-                                                    className={cn(
-                                                        "w-full justify-start gap-2 px-2 py-1.5 text-sm",
-                                                        activeFileId === file.id && "bg-muted",
-                                                    )}
-                                                    onClick={() => setActiveFileId(file.id)}
-                                                >
-                                                    <File className="h-4 w-4" />
-                                                    <span className="truncate">
-                            {folder ? getFilePathParts(file.file_path).slice(1).join("/") : file.file_path}
-                          </span>
-                                                </Button>
-                                            ))}
                                         </div>
-                                    </div>
-                                ))}
+                                    )
+                                )}
                             </div>
                         </ScrollArea>
                     </div>
@@ -97,16 +131,18 @@ export function CodeSidebar() {
                     {/* Code View */}
                     {activeFile && activeFileId && (
                         <div className="w-full flex flex-grow flex-col overflow-hidden">
-                            <div className="px-4 py-2 text-sm text-muted-foreground border-b">{activeFile.file_path}</div>
-                                {isGenerating ? (
-                                    <div className="p-4 space-y-3">
-                                        <div className="h-4 w-3/4 bg-muted animate-pulse rounded" />
-                                        <div className="h-4 w-1/2 bg-muted animate-pulse rounded" />
-                                        <div className="h-4 w-2/3 bg-muted animate-pulse rounded" />
-                                    </div>
-                                ) : (
-                                    <CodePreview code={code[activeFileId]}/>
-                                )}
+                            <div className="px-4 py-2 text-sm text-muted-foreground border-b">
+                                {activeFile.file_path}
+                            </div>
+                            {isGenerating ? (
+                                <div className="p-4 space-y-3">
+                                    <div className="h-4 w-3/4 bg-muted animate-pulse rounded" />
+                                    <div className="h-4 w-1/2 bg-muted animate-pulse rounded" />
+                                    <div className="h-4 w-2/3 bg-muted animate-pulse rounded" />
+                                </div>
+                            ) : (
+                                <CodePreview code={code[activeFileId]} />
+                            )}
                         </div>
                     )}
                     {!activeFile && (

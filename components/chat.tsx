@@ -1,11 +1,11 @@
-import type React from "react"
-import { useRef, useEffect, useState, useCallback } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Send } from "lucide-react"
-import { useCode } from "@/contexts/code-context"
-import { MarkdownContent } from "@/components/markdown-content"
-import CodeMessagePreview from "@/components/code-message-preview"
+import type React from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Send } from 'lucide-react'
+import { useCode } from '@/contexts/code-context'
+import { MarkdownContent } from '@/components/markdown-content'
+import CodeMessagePreview from '@/components/code-message-preview'
 
 interface Message {
     id: string
@@ -22,13 +22,18 @@ interface ChatProps {
     status: string | null
 }
 
-export function Chat({ messages, onSendMessage, isLoading, status }: ChatProps) {
-    const [input, setInput] = useState("")
+export function Chat({
+    messages,
+    onSendMessage,
+    isLoading,
+    status,
+}: ChatProps) {
+    const [input, setInput] = useState('')
     const messagesEndRef = useRef<HTMLDivElement | null>(null)
     const { toggleCode, fragments } = useCode()
 
     const scrollToBottom = useCallback(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }, [])
 
     useEffect(() => {
@@ -39,43 +44,48 @@ export function Chat({ messages, onSendMessage, isLoading, status }: ChatProps) 
         e.preventDefault()
         if (input.trim() && !isLoading) {
             onSendMessage(input.trim())
-            setInput("")
+            setInput('')
         }
     }
 
-    const renderMessage = useCallback((message: Message) => {
-        const messageKey = `message-${message.id}-${message.type || 'default'}`
+    const renderMessage = useCallback(
+        (message: Message) => {
+            const messageKey = `message-${message.id}-${message.type || 'default'}`
 
-        if (message.role === "user") {
+            if (message.role === 'user') {
+                return (
+                    <div key={messageKey} className="flex justify-end mb-4">
+                        <div className="bg-primary text-primary-foreground rounded-lg p-4 max-w-[80%]">
+                            {message.content}
+                        </div>
+                    </div>
+                )
+            }
+
+            if (message.type === 'code') {
+                const fragment = fragments.find(
+                    (f) => f.id === message.fragmentId
+                )
+                return (
+                    <CodeMessagePreview
+                        key={messageKey}
+                        message={message}
+                        fragment={fragment}
+                        toggleCode={toggleCode}
+                    />
+                )
+            }
+
             return (
-                <div key={messageKey} className="flex justify-end mb-4">
-                    <div className="bg-primary text-primary-foreground rounded-lg p-4 max-w-[80%]">
-                        {message.content}
+                <div key={messageKey} className="flex mb-4">
+                    <div className="bg-muted rounded-lg p-4 max-w-[80%]">
+                        <MarkdownContent content={message.content} />
                     </div>
                 </div>
             )
-        }
-
-        if (message.type === "code") {
-            const fragment = fragments.find((f) => f.id === message.fragmentId)
-            return (
-                <CodeMessagePreview
-                    key={messageKey}
-                    message={message}
-                    fragment={fragment}
-                    toggleCode={toggleCode}
-                />
-            )
-        }
-
-        return (
-            <div key={messageKey} className="flex mb-4">
-                <div className="bg-muted rounded-lg p-4 max-w-[80%]">
-                    <MarkdownContent content={message.content} />
-                </div>
-            </div>
-        )
-    }, [fragments, toggleCode])
+        },
+        [fragments, toggleCode]
+    )
 
     return (
         <div className="flex h-full overflow-hidden w-full flex-grow flex-col justify-between">
@@ -88,7 +98,7 @@ export function Chat({ messages, onSendMessage, isLoading, status }: ChatProps) 
                                 <div className="flex items-center gap-2">
                                     <div className="h-4 w-4 rounded-full bg-secondary animate-pulse" />
                                     <div className="text-sm text-muted-foreground">
-                                        {status || "Processing..."}
+                                        {status || 'Processing...'}
                                     </div>
                                 </div>
                             </div>
