@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Chat } from "@/components/chat"
-import { Header } from "@/components/header"
-import { AppSidebar } from "@/components/app-sidebar"
-import { CodeSidebar } from "@/components/code-sidebar"
-import { useCode } from "@/contexts/code-context"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import {useCallback, useEffect, useState} from "react"
+import {Chat} from "@/components/chat"
+import {Header} from "@/components/header"
+import {AppSidebar} from "@/components/app-sidebar"
+import {CodeSidebar} from "@/components/code-sidebar"
+import {useCode} from "@/contexts/code-context"
+import {Button} from "@/components/ui/button"
+import {cn} from "@/lib/utils"
 
 interface Message {
     id: string
@@ -28,19 +28,41 @@ const Page = () => {
     const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
     const [status, setStatus] = useState<string | null>(null)
-    const { setFragments, updateCode, isCodeOpen } = useCode()
+    const {setFragments, updateCode, isCodeOpen, syncWithLocalStorage} = useCode()
 
+    // Load conversations from localStorage
     useEffect(() => {
         const savedConversations = localStorage.getItem("conversations")
         if (savedConversations) {
             const parsedConversations = JSON.parse(savedConversations)
-            setConversations(parsedConversations.map((conv: Conversation) => ({ ...conv, socket: null })))
+            setConversations(parsedConversations.map((conv: Conversation) => ({...conv, socket: null})))
+
+            // Restore last active conversation if it exists
+            const lastActiveConversation = localStorage.getItem("activeConversation")
+            if (lastActiveConversation) {
+                setCurrentConversationId(lastActiveConversation)
+            }
         }
     }, [])
 
+    // Save conversations to localStorage
     useEffect(() => {
-        localStorage.setItem("conversations", JSON.stringify(conversations.map(({ ...conv }) => conv)))
+        localStorage.setItem("conversations", JSON.stringify(conversations.map(({...conv}) => conv)))
     }, [conversations])
+
+    // Handle conversation switching
+    const handleConversationSwitch = useCallback((conversationId: string) => {
+        setCurrentConversationId(conversationId)
+        localStorage.setItem("activeConversation", conversationId)
+        syncWithLocalStorage(conversationId)
+    }, [syncWithLocalStorage])
+
+    // Update setCurrentConversationId to use handleConversationSwitch
+    useEffect(() => {
+        if (currentConversationId) {
+            handleConversationSwitch(currentConversationId)
+        }
+    }, [currentConversationId, handleConversationSwitch])
 
     const createWebSocket = (conversationId: string) => {
         const ws = new WebSocket(process.env.NEXT_PUBLIC_CEREBRIUM_SOCKET_URL || '')
@@ -56,7 +78,10 @@ const Page = () => {
 
         ws.onclose = () => {
             console.log(`WebSocket closed for conversation ${conversationId}`)
-            setConversations((prev) => prev.map((conv) => (conv.id === conversationId ? { ...conv, socket: null } : conv)))
+            setConversations((prev) => prev.map((conv) => (conv.id === conversationId ? {
+                ...conv,
+                socket: null
+            } : conv)))
         }
 
         ws.onerror = (error) => {
@@ -74,7 +99,6 @@ const Page = () => {
                 updateCode(firstFragment.id, "")
             }
         } else if (data.type === "status") {
-            console.log(data);
             setStatus(data.content)
         } else if (data.type.startsWith("context_") || data.type.startsWith("code_") || data.type === "token") {
             setConversations((prevConversations) => {
@@ -110,7 +134,7 @@ const Page = () => {
                         })
                     }
 
-                    return { ...conv, messages }
+                    return {...conv, messages}
                 })
             })
 
@@ -164,14 +188,14 @@ const Page = () => {
 
         setConversations((prev) =>
             prev.map((conv) =>
-                conv.id === currentConversationId ? { ...conv, messages: [...conv.messages, userMessage] } : conv,
+                conv.id === currentConversationId ? {...conv, messages: [...conv.messages, userMessage]} : conv,
             ),
         )
 
         if (!currentConversation.socket || currentConversation.socket.readyState !== WebSocket.OPEN) {
             const newSocket = createWebSocket(currentConversationId)
             setConversations((prev) =>
-                prev.map((conv) => (conv.id === currentConversationId ? { ...conv, socket: newSocket } : conv)),
+                prev.map((conv) => (conv.id === currentConversationId ? {...conv, socket: newSocket} : conv)),
             )
             newSocket.onopen = () => {
                 newSocket.send(
@@ -193,8 +217,8 @@ const Page = () => {
 
     const createNewConversation = () => {
         const newId = Date.now().toString()
-        setConversations((prev) => [...prev, { id: newId, messages: [], socket: null }])
-        setCurrentConversationId(newId)
+        setConversations((prev) => [...prev, {id: newId, messages: [], socket: null}])
+        handleConversationSwitch(newId)
     }
 
     const currentConversation = conversations.find((conv) => conv.id === currentConversationId)
@@ -204,7 +228,7 @@ const Page = () => {
             <AppSidebar
                 conversations={conversations}
                 currentConversationId={currentConversationId}
-                onSelectConversation={setCurrentConversationId}
+                onSelectConversation={handleConversationSwitch}
                 onNewConversation={createNewConversation}
             />
             <div className="flex flex-col w-full justify-between">
@@ -212,7 +236,7 @@ const Page = () => {
                     isConnected={!!currentConversation?.socket}
                     conversations={conversations}
                     currentConversationId={currentConversationId}
-                    onSelectConversation={setCurrentConversationId}
+                    onSelectConversation={handleConversationSwitch}
                     onNewConversation={createNewConversation}
                 />
                 <div className="flex-grow w-full h-full overflow-hidden">

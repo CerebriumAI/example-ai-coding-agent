@@ -5,6 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { ChevronDown, File, Folder, Code2, X } from "lucide-react"
 import { cn } from "@/lib/utils"
+import CodePreview from "@/components/code-preview";
 
 interface FileTreeItem {
     id: string
@@ -13,7 +14,7 @@ interface FileTreeItem {
 }
 
 export function CodeSidebar() {
-    const { fragments, codes, isCodeOpen, toggleCode, activeFileId, setActiveFileId } = useCode()
+    const { fragments, code, isCodeOpen, toggleCode, activeFileId, setActiveFileId } = useCode()
 
     if (!isCodeOpen) return null
 
@@ -38,7 +39,7 @@ export function CodeSidebar() {
 
     const organizedFiles = organizeFiles(fragments)
     const activeFile = fragments.find((f) => f.id === activeFileId)
-    const isGenerating = activeFileId && !codes[activeFileId]
+    const isGenerating = activeFileId && !code[activeFileId]
 
     return (
         <div className="flex h-full flex-col">
@@ -95,9 +96,8 @@ export function CodeSidebar() {
 
                     {/* Code View */}
                     {activeFile && activeFileId && (
-                        <div className="flex flex-grow flex-col overflow-hidden">
+                        <div className="w-full flex flex-grow flex-col overflow-hidden">
                             <div className="px-4 py-2 text-sm text-muted-foreground border-b">{activeFile.file_path}</div>
-                            <ScrollArea className="flex-1">
                                 {isGenerating ? (
                                     <div className="p-4 space-y-3">
                                         <div className="h-4 w-3/4 bg-muted animate-pulse rounded" />
@@ -105,11 +105,8 @@ export function CodeSidebar() {
                                         <div className="h-4 w-2/3 bg-muted animate-pulse rounded" />
                                     </div>
                                 ) : (
-                                    <pre className="p-4 whitespace-pre-wrap break-all">
-                    <code className="text-sm font-mono">{codes[activeFileId]}</code>
-                  </pre>
+                                    <CodePreview code={code[activeFileId]}/>
                                 )}
-                            </ScrollArea>
                         </div>
                     )}
                     {!activeFile && (
